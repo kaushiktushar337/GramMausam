@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import alerts, advisory, downscaling, forecast, historical, model, panchayats, weather
-from app.config import APP_NAME, CORS_ORIGINS, ENVIRONMENT
+from app.config import APP_NAME, ENVIRONMENT
 
 app = FastAPI(
     title=APP_NAME,
@@ -15,7 +15,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=[
+        "https://gram-mausam.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
