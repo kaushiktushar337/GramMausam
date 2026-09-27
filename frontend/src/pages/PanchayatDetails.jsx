@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   CloudRain,
@@ -19,12 +19,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useSearchParams } from "react-router-dom";
 
 import {
-  getForecast,
-  getPanchayats,
-  getWeather,
-} from "../services/weatherService";
+  getForecastFromApi,
+  getWeatherFromApi,
+} from "../services/api";
+
+import PanchayatSelector from "../components/PanchayatSelector";
 
 const parameters = [
   "Rainfall",
@@ -45,12 +47,73 @@ const chartLabels = {
 };
 
 export default function PanchayatDetails() {
-  const [panchayat, setPanchayat] = useState("Bara");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const panchayat = searchParams.get("panchayat") || "ABHAUDOPURA";
+
   const [activeParameter, setActiveParameter] =
     useState("Rainfall");
 
-  const weather = getWeather(panchayat);
-  const forecast = getForecast(panchayat);
+  const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPanchayatData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [weatherData, forecastData] =
+          await Promise.all([
+            getWeatherFromApi(panchayat),
+            getForecastFromApi(panchayat),
+          ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setWeather(weatherData);
+        setForecast(forecastData);
+
+        console.log(
+          `Panchayat Details data for ${panchayat}:`,
+          {
+            weather: weatherData,
+            forecast: forecastData,
+          }
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error(
+          "Panchayat Details API failed:",
+          error
+        );
+
+        setWeather(null);
+        setForecast([]);
+        setError(
+          "Unable to load Panchayat weather data."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPanchayatData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [panchayat]);
 
   const selectedKey = chartKeys[activeParameter];
 
@@ -84,26 +147,32 @@ export default function PanchayatDetails() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Detailed local weather intelligence for agricultural
-              decision-making.
+              Detailed local weather intelligence for
+              agricultural decision-making.
             </p>
           </div>
 
-          <select
-            value={panchayat}
-            onChange={(event) =>
-              setPanchayat(event.target.value)
-            }
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-400"
-          >
-            {getPanchayats().map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="w-full sm:max-w-xs">
+            <PanchayatSelector
+              key={panchayat}
+              value={panchayat}
+              onChange={(name) => setSearchParams({ panchayat: name })}
+            />
+          </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
+          Loading Panchayat weather data...
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-xs text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* Location strip */}
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -145,11 +214,11 @@ export default function PanchayatDetails() {
 
             <div>
               <p className="text-4xl font-bold tracking-tight text-slate-900">
-                {weather.temperature}°C
+                {weather?.maxTemp ?? "--"}°C
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
-                {weather.condition}
+                {weather?.condition ?? "Data unavailable"}
               </p>
             </div>
           </div>
@@ -158,8 +227,15 @@ export default function PanchayatDetails() {
         <WeatherStat
           icon={CloudRain}
           title="Rainfall (24h)"
-          value={`${weather.rainfall} mm`}
-          note={weather.rainfallRange}
+          value={
+            weather
+              ? `${formatRainfall(weather.rainfall)} mm`
+              : "--"
+          }
+          note={
+            weather?.rainfallRange ||
+            "Current estimate"
+          }
           iconClass="text-sky-500"
           bgClass="bg-sky-50"
         />
@@ -167,7 +243,11 @@ export default function PanchayatDetails() {
         <WeatherStat
           icon={Droplets}
           title="Humidity"
-          value={`${weather.humidity}%`}
+          value={
+            weather
+              ? `${weather.humidity}%`
+              : "--"
+          }
           note="Current estimate"
           iconClass="text-cyan-500"
           bgClass="bg-cyan-50"
@@ -176,8 +256,15 @@ export default function PanchayatDetails() {
         <WeatherStat
           icon={Wind}
           title="Wind"
-          value={`${weather.windSpeed} km/h`}
-          note={weather.windDirection}
+          value={
+            weather
+              ? `${weather.windSpeed} km/h`
+              : "--"
+          }
+          note={
+            weather?.windDirection ||
+            "Current direction unavailable"
+          }
           iconClass="text-indigo-500"
           bgClass="bg-indigo-50"
         />
@@ -201,12 +288,7 @@ export default function PanchayatDetails() {
               </span>
             </div>
 
-            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-              The prototype compares the coarse block forecast with
-              a finer Panchayat-level estimate. The real ML
-              downscaling engine will replace these demonstration
-              values in Chunk 2.
-            </p>
+           
 
             <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-[1fr_auto_1fr]">
               <DownscaleBox
@@ -223,7 +305,11 @@ export default function PanchayatDetails() {
 
               <DownscaleBox
                 label="Panchayat Estimate"
-                value={`${weather.rainfall} mm`}
+                value={
+                  weather
+                    ? `${formatRainfall(weather.rainfall)} mm`
+                    : "--"
+                }
                 subtext="Localized output"
                 highlighted
               />
@@ -267,63 +353,73 @@ export default function PanchayatDetails() {
           </div>
 
           <div className="mt-6 h-[320px] w-full">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
-              <LineChart data={chartData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#e2e8f0"
-                />
+            {loading ? (
+              <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                Loading forecast...
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs text-red-500">
+                Forecast data unavailable.
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <LineChart data={chartData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#e2e8f0"
+                  />
 
-                <XAxis
-                  dataKey="day"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{
-                    fontSize: 10,
-                    fill: "#64748b",
-                  }}
-                />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{
+                      fontSize: 10,
+                      fill: "#64748b",
+                    }}
+                  />
 
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{
-                    fontSize: 10,
-                    fill: "#64748b",
-                  }}
-                />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{
+                      fontSize: 10,
+                      fill: "#64748b",
+                    }}
+                  />
 
-                <Tooltip
-                  formatter={(value) => [
-                    value,
-                    chartLabels[activeParameter],
-                  ]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "11px",
-                  }}
-                />
+                  <Tooltip
+                    formatter={(value) => [
+                      value,
+                      chartLabels[activeParameter],
+                    ]}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "11px",
+                    }}
+                  />
 
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#059669"
-                  strokeWidth={3}
-                  dot={{
-                    r: 4,
-                    fill: "#059669",
-                  }}
-                  activeDot={{
-                    r: 6,
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#059669"
+                    strokeWidth={3}
+                    dot={{
+                      r: 4,
+                      fill: "#059669",
+                    }}
+                    activeDot={{
+                      r: 6,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </section>
 
@@ -341,31 +437,36 @@ export default function PanchayatDetails() {
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-amber-800">
-                  {weather.risk} Risk
+                  {weather?.risk ?? "--"} Risk
                 </span>
 
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
               </div>
 
               <p className="mt-2 text-xs leading-5 text-slate-600">
-                {weather.riskText}
+                {weather?.riskText ??
+                  "Risk information unavailable."}
               </p>
             </div>
 
             <RiskRow
               name="Heavy Rain"
               status={
-                weather.rainfall >= 25
-                  ? "High"
-                  : "Moderate"
+                weather
+                  ? weather.rainfall >= 25
+                    ? "High"
+                    : "Moderate"
+                  : "Low"
               }
             />
 
             <RiskRow
               name="Waterlogging"
               status={
-                weather.rainfall >= 20
-                  ? "Moderate"
+                weather
+                  ? weather.rainfall >= 20
+                    ? "Moderate"
+                    : "Low"
                   : "Low"
               }
             />
@@ -373,8 +474,10 @@ export default function PanchayatDetails() {
             <RiskRow
               name="Heat Stress"
               status={
-                weather.maxTemp >= 35
-                  ? "Moderate"
+                weather
+                  ? weather.maxTemp >= 35
+                    ? "Moderate"
+                    : "Low"
                   : "Low"
               }
             />
@@ -392,22 +495,30 @@ export default function PanchayatDetails() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               <InfoBox
                 title="Crop"
-                value={weather.crop}
+                value="Not specified"
               />
 
               <InfoBox
                 title="Growth Stage"
-                value={weather.cropStage}
+                value="Not specified"
               />
 
               <InfoBox
                 title="Max Temp"
-                value={`${weather.maxTemp}°C`}
+                value={
+                  weather
+                    ? `${weather.maxTemp}°C`
+                    : "--"
+                }
               />
 
               <InfoBox
                 title="Min Temp"
-                value={`${weather.minTemp}°C`}
+                value={
+                  weather
+                    ? `${weather.minTemp}°C`
+                    : "--"
+                }
               />
             </div>
           </section>
@@ -455,7 +566,7 @@ export default function PanchayatDetails() {
             <tbody>
               {forecast.map((item, index) => (
                 <tr
-                  key={item.day}
+                  key={`${panchayat}-${item.date}`}
                   className="border-b border-slate-100 last:border-none"
                 >
                   <td className="px-4 py-3 text-xs font-semibold text-slate-700">
@@ -463,7 +574,7 @@ export default function PanchayatDetails() {
                   </td>
 
                   <td className="px-4 py-3 text-xs text-slate-600">
-                    {item.rainfall} mm
+                    {formatRainfall(item.rainfall)} mm
                   </td>
 
                   <td className="px-4 py-3 text-xs text-slate-600">
@@ -485,7 +596,7 @@ export default function PanchayatDetails() {
                         <CloudRain className="h-3 w-3" />
                         Rain
                       </span>
-                    ) : item.max >= 35 ? (
+                    ) : item.maxTemp >= 35 ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[9px] font-semibold text-amber-700">
                         <Thermometer className="h-3 w-3" />
                         Hot
@@ -516,9 +627,9 @@ export default function PanchayatDetails() {
             </p>
 
             <p className="mt-1 text-[11px] leading-5 text-slate-500">
-              Confidence indicates how strongly the current forecast
-              is supported by the available data and model
-              conditions.
+              Confidence indicates how strongly the current
+              forecast is supported by the available data and
+              model conditions.
             </p>
           </div>
 
@@ -529,7 +640,7 @@ export default function PanchayatDetails() {
               </span>
 
               <span className="text-xs font-bold text-emerald-700">
-                {weather.confidence}
+                {weather?.confidence ?? "--"}
               </span>
             </div>
 
@@ -537,19 +648,13 @@ export default function PanchayatDetails() {
               <div
                 className="h-full rounded-full bg-emerald-500"
                 style={{
-                  width: `${weather.confidenceValue}%`,
+                  width: `${weather?.confidenceValue ?? 0}%`,
                 }}
               />
             </div>
           </div>
         </div>
       </section>
-
-      <p className="mt-4 text-center text-[10px] text-slate-400">
-        Prototype interface — weather values shown here are
-        demonstration data until the backend downscaling model is
-        connected.
-      </p>
     </main>
   );
 }
@@ -668,4 +773,8 @@ function InfoBox({ title, value }) {
       </p>
     </div>
   );
+}
+
+function formatRainfall(value) {
+  return Number(value).toFixed(1);
 }

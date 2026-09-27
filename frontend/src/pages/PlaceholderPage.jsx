@@ -6,10 +6,7 @@ export default function PlaceholderPage({ title }) {
           {title}
         </h2>
 
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          This module is part of Chunk 1 and will be built after
-          the main dashboard is completed.
-        </p>
+        
       </div>
     </div>
   );

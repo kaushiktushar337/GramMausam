@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   CloudRain,
@@ -11,21 +11,36 @@ import {
 } from "lucide-react";
 
 import WeatherMap from "../components/WeatherMap";
-import { weatherByPanchayat } from "../data/mockData";
-
-const panchayats = Object.keys(weatherByPanchayat);
+import PanchayatSelector from "../components/PanchayatSelector";
+import { getWeatherFromApi } from "../services/api";
 
 export default function MapView() {
-  const [selectedPanchayat, setSelectedPanchayat] =
-    useState("Bara");
+  const [selectedPanchayat, setSelectedPanchayat] = useState("ABHAUDOPURA");
+  const [weatherResult, setWeatherResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  const weather = useMemo(() => {
-    return (
-      weatherByPanchayat[selectedPanchayat] ||
-      weatherByPanchayat.Bara
-    );
+  useEffect(() => {
+    if (!selectedPanchayat) return;
+    let cancelled = false;
+    getWeatherFromApi(selectedPanchayat)
+      .then((weather) => {
+        if (!cancelled) {
+          setWeatherResult({ panchayat: selectedPanchayat, weather });
+          setError(null);
+        }
+      })
+      .catch((requestError) => {
+        console.error("Map weather API failed:", requestError);
+        if (!cancelled) setError("Unable to load weather for this Panchayat.");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedPanchayat]);
 
+  const weather = weatherResult?.panchayat === selectedPanchayat
+    ? weatherResult.weather
+    : null;
   return (
     <main className="mx-auto w-full max-w-[1700px] p-4 sm:p-6 xl:p-8">
       {/* Heading */}
@@ -37,58 +52,30 @@ export default function MapView() {
             Map View
           </span>
         </div>
-
         <div className="mt-3">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Panchayat Map View
           </h1>
-
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-            Explore localized weather conditions and compare
-            Panchayat-level estimates across the selected block.
+            Explore backend weather estimates across available Panchayats.
           </p>
         </div>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
       {/* Location bar */}
       <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <LocationField
-              label="State"
-              value="Uttar Pradesh"
-            />
-
-            <LocationField
-              label="District"
-              value="Prayagraj"
-            />
-
-            <LocationField
-              label="Block"
-              value="Phaphamau"
-            />
-          </div>
-
-          <div className="w-full sm:w-56">
-            <label className="mb-1.5 block text-[10px] font-medium text-slate-500">
-              Selected Panchayat
-            </label>
-
-            <select
-              value={selectedPanchayat}
-              onChange={(event) =>
-                setSelectedPanchayat(event.target.value)
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400"
-            >
-              {panchayats.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PanchayatSelector
+            key={selectedPanchayat}
+            value={selectedPanchayat}
+            onChange={setSelectedPanchayat}
+          />
         </div>
       </section>
 
@@ -116,29 +103,29 @@ export default function MapView() {
         <StatCard
           icon={CloudRain}
           title="Rainfall"
-          value={`${weather.rainfall} mm`}
-          note={weather.rainfallRange}
+          value={weather ? `${weather.rainfall} mm` : "--"}
+          note={weather?.rainfallRange || ""}
         />
 
         <StatCard
           icon={Thermometer}
           title="Temperature"
-          value={`${weather.temperature}°C`}
-          note={`${weather.minTemp}°C - ${weather.maxTemp}°C`}
+          value={weather ? `${weather.maxTemp}°C` : "--"}
+          note={weather ? `${weather.minTemp}°C - ${weather.maxTemp}°C` : ""}
         />
 
         <StatCard
           icon={Droplets}
           title="Humidity"
-          value={`${weather.humidity}%`}
+          value={weather ? `${weather.humidity}%` : "--"}
           note="Current estimate"
         />
 
         <StatCard
           icon={Wind}
           title="Wind"
-          value={`${weather.windSpeed} km/h`}
-          note={weather.windDirection}
+          value={weather ? `${weather.windSpeed} km/h` : "--"}
+          note={weather?.windDirection || ""}
         />
       </section>
     </main>
@@ -169,11 +156,11 @@ function SelectedPanchayat({ name, weather }) {
 
         <div>
           <p className="text-3xl font-bold text-slate-900">
-            {weather.temperature}°C
+            {weather?.maxTemp ?? "--"}°C
           </p>
 
           <p className="text-xs text-slate-500">
-            {weather.condition}
+            {weather?.condition ?? "Loading weather..."}
           </p>
         </div>
       </div>
@@ -186,19 +173,19 @@ function SelectedPanchayat({ name, weather }) {
 
           <span
             className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${
-              weather.risk === "High"
+              weather?.risk === "High"
                 ? "bg-red-50 text-red-700"
-                : weather.risk === "Medium"
+                : weather?.risk === "Medium"
                   ? "bg-amber-50 text-amber-700"
                   : "bg-emerald-50 text-emerald-700"
             }`}
           >
-            {weather.risk}
+            {weather?.risk ?? "--"}
           </span>
         </div>
 
         <p className="mt-2 text-[11px] leading-5 text-slate-500">
-          {weather.riskText}
+          {weather?.riskText ?? "Weather risk unavailable."}
         </p>
       </div>
 
@@ -212,7 +199,7 @@ function SelectedPanchayat({ name, weather }) {
         </div>
 
         <span className="text-xs font-bold text-emerald-700">
-          {weather.confidence}
+          {weather?.confidence ?? "--"}
         </span>
       </div>
     </section>
@@ -313,26 +300,9 @@ function MapHelp() {
           temperature, humidity, wind and risk.
         </p>
 
-        <p>
-          Current map boundaries and values are demonstration data
-          and will later come from the backend geospatial pipeline.
-        </p>
+        
       </div>
     </section>
-  );
-}
-
-function LocationField({ label, value }) {
-  return (
-    <div>
-      <p className="text-[9px] uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-1 text-xs font-semibold text-slate-700">
-        {value}
-      </p>
-    </div>
   );
 }
 

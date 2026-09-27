@@ -28,11 +28,11 @@ export default function PanchayatOverview({
 
           <div className="flex-1">
             <div className="text-3xl font-bold text-slate-900">
-              {weather.temperature}°C
+              {weather?.maxTemp ?? "--"}°C
             </div>
 
             <p className="text-xs text-slate-500">
-              {weather.condition}
+              {weather?.condition ?? "Weather unavailable"}
             </p>
           </div>
 
@@ -43,7 +43,7 @@ export default function PanchayatOverview({
               </p>
 
               <p className="text-sm font-bold text-slate-800">
-                {weather.maxTemp}°C
+                {weather?.maxTemp ?? "--"}°C
               </p>
             </div>
 
@@ -53,7 +53,7 @@ export default function PanchayatOverview({
               </p>
 
               <p className="text-sm font-bold text-slate-800">
-                {weather.minTemp}°C
+                {weather?.minTemp ?? "--"}°C
               </p>
             </div>
           </div>
@@ -63,19 +63,19 @@ export default function PanchayatOverview({
           <Metric
             icon={Droplets}
             label="Humidity"
-            value={`${weather.humidity}%`}
+            value={weather ? `${weather.humidity}%` : "--"}
           />
 
           <Metric
             icon={Wind}
             label="Wind Speed"
-            value={`${weather.windSpeed} km/h`}
+            value={weather ? `${weather.windSpeed} km/h` : "--"}
           />
 
           <Metric
             icon={Navigation}
             label="Wind Direction"
-            value={weather.windDirection}
+            value={weather?.windDirection ?? "--"}
           />
         </div>
       </section>
@@ -92,7 +92,7 @@ export default function PanchayatOverview({
             </p>
 
             <p className="mt-1 text-sm font-bold text-slate-800">
-              {weather.confidence}
+              {weather?.confidence ?? "--"}
             </p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function PanchayatOverview({
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
             style={{
-              width: `${weather.confidenceValue}%`,
+              width: `${weather?.confidenceValue ?? 0}%`,
             }}
           />
         </div>

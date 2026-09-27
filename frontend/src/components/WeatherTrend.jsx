@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { getForecast } from "../services/weatherService";
+import { getForecastFromApi } from "../services/api";
 
 const parameters = [
   "Rainfall",
@@ -19,15 +19,35 @@ const parameters = [
   "Humidity",
 ];
 
-export default function WeatherTrend({
-  panchayat,
-}) {
+export default function WeatherTrend({ panchayat }) {
   const [activeParameter, setActiveParameter] =
     useState("Rainfall");
 
-  const forecast = getForecast(panchayat);
+  const [forecastResult, setForecastResult] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getForecastFromApi(panchayat)
+      .then((data) => {
+        if (!cancelled) setForecastResult({ panchayat, items: data });
+      })
+      .catch((error) => {
+        console.error("WeatherTrend API failed:", error);
+        if (!cancelled) setForecastResult({ panchayat, items: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [panchayat]);
+
+  const loading = forecastResult?.panchayat !== panchayat;
 
   const chartData = useMemo(() => {
+    const forecast = forecastResult?.panchayat === panchayat
+      ? forecastResult.items
+      : [];
     return forecast.map((item) => ({
       date: item.date,
       rainfall: item.rainfall,
@@ -35,7 +55,7 @@ export default function WeatherTrend({
       temperature: item.maxTemp,
       humidity: item.humidity,
     }));
-  }, [forecast]);
+  }, [forecastResult, panchayat]);
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -55,9 +75,7 @@ export default function WeatherTrend({
             <button
               key={parameter}
               type="button"
-              onClick={() =>
-                setActiveParameter(parameter)
-              }
+              onClick={() => setActiveParameter(parameter)}
               className={`rounded-lg px-3 py-1.5 text-[10px] font-medium transition ${
                 activeParameter === parameter
                   ? "bg-emerald-700 text-white"
@@ -71,16 +89,28 @@ export default function WeatherTrend({
       </div>
 
       <div className="mt-5 h-[280px] w-full">
-        {activeParameter === "Rainfall" && (
-          <RainfallChart data={chartData} />
-        )}
+        {loading ? (
+          <div className="flex h-full items-center justify-center text-xs text-slate-400">
+            Loading weather trend...
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-xs text-red-500">
+            Weather trend unavailable.
+          </div>
+        ) : (
+          <>
+            {activeParameter === "Rainfall" && (
+              <RainfallChart data={chartData} />
+            )}
 
-        {activeParameter === "Temperature" && (
-          <TemperatureChart data={chartData} />
-        )}
+            {activeParameter === "Temperature" && (
+              <TemperatureChart data={chartData} />
+            )}
 
-        {activeParameter === "Humidity" && (
-          <HumidityChart data={chartData} />
+            {activeParameter === "Humidity" && (
+              <HumidityChart data={chartData} />
+            )}
+          </>
         )}
       </div>
     </section>

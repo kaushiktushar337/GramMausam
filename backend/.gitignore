@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.log
+
+# All project data
+data/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# GIS files
+**/*.tif
+**/*.tiff
+**/*.nc
+**/*.geojson
+**/*.geojsonl
+**/*.gpkg
+**/*.shp
+**/*.shx
+**/*.dbf
+**/*.prj
+**/*.cpg
+**/*.kml
+**/*.kmz
+
+# Models
+models/*
+!models/.gitkeep

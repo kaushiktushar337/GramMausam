@@ -5,14 +5,27 @@ import {
   Sprout,
 } from "lucide-react";
 
-const actions = [
-  "Avoid irrigation due to expected rainfall.",
-  "Ensure proper drainage in fields.",
-  "Delay fertilizer application (if planned).",
-  "Monitor for pest and disease incidence after rainfall.",
-];
+export default function AdvisoryPanel({ advisory }) {
+  if (!advisory) {
+    return (
+      <aside className="space-y-4">
+        <section className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+          <div className="flex items-center gap-2">
+            <Leaf className="h-5 w-5 text-emerald-600" />
 
-export default function AdvisoryPanel({ weather }) {
+            <h2 className="text-sm font-bold text-emerald-800">
+              Agricultural Advisory
+            </h2>
+          </div>
+
+          <div className="mt-5 rounded-xl bg-white p-5 text-center text-xs text-slate-400">
+            Loading advisory...
+          </div>
+        </section>
+      </aside>
+    );
+  }
+
   return (
     <aside className="space-y-4">
       <section className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
@@ -26,16 +39,24 @@ export default function AdvisoryPanel({ weather }) {
 
         <div className="mt-5 rounded-xl border border-slate-200 bg-white p-3">
           <label className="text-[10px] text-slate-500">
-            Crop
+            Advisory Level
           </label>
 
           <div className="mt-1 flex items-center justify-between">
             <span className="text-sm font-semibold text-slate-800">
-              🌾 {weather.crop}
+              {advisory.level}
             </span>
 
-            <span className="text-xs text-slate-400">
-              ▼
+            <span
+              className={`rounded-full px-2 py-1 text-[9px] font-semibold ${
+                advisory.level === "High"
+                  ? "bg-red-100 text-red-700"
+                  : advisory.level === "Medium"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-emerald-100 text-emerald-700"
+              }`}
+            >
+              Attention
             </span>
           </div>
         </div>
@@ -47,17 +68,23 @@ export default function AdvisoryPanel({ weather }) {
             </p>
           </div>
 
-          <div className="space-y-3 p-4">
-            {actions.map((action) => (
+          <div className="space-y-4 p-4">
+            {advisory.actions.map((action) => (
               <div
-                key={action}
+                key={action.title}
                 className="flex items-start gap-2"
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
 
-                <p className="text-[11px] leading-5 text-slate-600">
-                  {action}
-                </p>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-700">
+                    {action.title}
+                  </p>
+
+                  <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                    {action.description}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -73,7 +100,7 @@ export default function AdvisoryPanel({ weather }) {
               </p>
 
               <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                {weather.riskText}
+                {advisory.summary}
               </p>
             </div>
           </div>
@@ -85,15 +112,15 @@ export default function AdvisoryPanel({ weather }) {
 
             <div>
               <p className="text-[10px] font-bold text-emerald-800">
-                Crop Stage
+                Advisory Details
               </p>
 
               <p className="mt-1 text-[11px] text-slate-600">
-                {weather.cropStage}
+                Irrigation: {advisory.irrigation}
               </p>
 
-              <p className="text-[10px] text-slate-400">
-                ({weather.cropStageDays})
+              <p className="mt-1 text-[11px] text-slate-600">
+                Field operations: {advisory.fieldOperations}
               </p>
             </div>
           </div>

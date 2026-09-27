@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   CheckCircle2,
   CloudRain,
   Droplets,

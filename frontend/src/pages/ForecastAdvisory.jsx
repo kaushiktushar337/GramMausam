@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -8,16 +8,12 @@ import {
   Droplets,
   Leaf,
   ShieldCheck,
-  Thermometer,
   Wind,
 } from "lucide-react";
 
-import { weatherByPanchayat } from "../data/mockData";
-
-import {
-  createAdvisory,
-  crops,
-} from "../services/advisoryService";
+import { crops } from "../services/advisoryService";
+import { getAdvisoryFromApi } from "../services/api";
+import PanchayatSelector from "../components/PanchayatSelector";
 
 import {
   getForecast,
@@ -25,41 +21,97 @@ import {
 
 
 export default function ForecastAdvisory() {
-  const [panchayat, setPanchayat] = useState("Bara");
+  const [panchayat, setPanchayat] = useState("ABHAUDOPURA");
+
   const [crop, setCrop] = useState("Wheat");
+
   const [stage, setStage] = useState(
     crops.Wheat.stages[1]
   );
 
-  const weather =
-    weatherByPanchayat[panchayat] ||
-    weatherByPanchayat.Bara;
+  const [forecast, setForecast] = useState([]);
+  const [advisoryResult, setAdvisoryResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const forecast = getForecast(panchayat);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadForecast() {
+      if (!panchayat) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getForecast(panchayat);
+
+        if (!cancelled) {
+          setForecast(data);
+        }
+      } catch (err) {
+        console.error("Forecast API failed:", err);
+
+        if (!cancelled) {
+          setForecast([]);
+          setError("Unable to load Panchayat forecast.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadForecast();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [panchayat]);
 
   const stageOptions = crops[crop].stages;
 
-  const today = forecast[0];
+  const today = forecast[0] || {
+    rainfall: 0,
+    rainProbability: 0,
+    maxTemp: 0,
+    humidity: 0,
+    windSpeed: 0,
+  };
+  const advisoryKey = `${panchayat}|${crop}|${stage}|${today.date || ""}`;
+  const advisory = advisoryResult?.key === advisoryKey
+    ? advisoryResult.data
+    : null;
 
-  const advisory = useMemo(() => {
-    return createAdvisory({
+  useEffect(() => {
+    let cancelled = false;
+
+    if (forecast.length === 0) return;
+
+    const requestKey = advisoryKey;
+
+    getAdvisoryFromApi({
       crop,
-      stage,
+      growthStage: stage,
       rainfall: today.rainfall,
       rainProbability: today.rainProbability,
       temperature: today.maxTemp,
       humidity: today.humidity,
-      wind: today.windSpeed,
-    });
-  }, [
-    crop,
-    stage,
-    today.rainfall,
-    today.rainProbability,
-    today.maxTemp,
-    today.humidity,
-    today.windSpeed,
-  ]);
+      windSpeed: today.windSpeed,
+    })
+      .then((data) => {
+        if (!cancelled) setAdvisoryResult({ key: requestKey, data });
+      })
+      .catch((err) => {
+        console.error("Advisory API failed:", err);
+        if (!cancelled) setAdvisoryResult({ key: requestKey, data: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [advisoryKey, crop, stage, today.rainfall, today.rainProbability, today.maxTemp, today.humidity, today.windSpeed, forecast.length]);
 
   const handleCropChange = (value) => {
     setCrop(value);
@@ -67,7 +119,19 @@ export default function ForecastAdvisory() {
   };
 
   return (
+
     <main className="mx-auto w-full max-w-[1700px] p-4 sm:p-6 xl:p-8">
+{loading && (
+  <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
+    Loading Panchayat forecast...
+  </div>
+)}
+
+{error && (
+  <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-xs text-red-600">
+    {error}
+  </div>
+)}
       {/* Heading */}
       <div className="mb-5">
         <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -91,10 +155,9 @@ export default function ForecastAdvisory() {
       {/* Filters */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-3">
-          <SelectField
-            label="Panchayat"
+          <PanchayatSelector
+            key={panchayat}
             value={panchayat}
-            options={Object.keys(weatherByPanchayat)}
             onChange={setPanchayat}
           />
 
@@ -159,7 +222,7 @@ export default function ForecastAdvisory() {
         <SummaryCard
           icon={Wind}
           title="Wind"
-          value={`${today.wind} km/h`}
+          value={`${today.windSpeed} km/h`}
           note="Expected today"
         />
       </section>
@@ -172,7 +235,7 @@ export default function ForecastAdvisory() {
               <CalendarDays className="h-5 w-5 text-emerald-600" />
 
               <h2 className="text-sm font-bold text-slate-800">
-                7-Day Panchayat Forecast
+                5-Day Panchayat Forecast
               </h2>
             </div>
 
@@ -182,7 +245,7 @@ export default function ForecastAdvisory() {
           </div>
 
           <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700">
-            {weather.confidence} Confidence
+            ML Downscaled Rainfall
           </span>
         </div>
 
@@ -221,7 +284,7 @@ export default function ForecastAdvisory() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {advisory.actions.map((action) => (
+            {advisory?.actions?.map((action) => (
               <div
                 key={action.title}
                 className="rounded-xl border border-emerald-100 bg-white p-4"
@@ -256,9 +319,9 @@ export default function ForecastAdvisory() {
           <div className="mt-5">
             <div
               className={`rounded-xl p-4 ${
-                advisory.level === "High"
+                advisory?.level === "High"
                   ? "bg-red-50"
-                  : advisory.level === "Medium"
+                  : advisory?.level === "Medium"
                     ? "bg-amber-50"
                     : "bg-emerald-50"
               }`}
@@ -270,15 +333,15 @@ export default function ForecastAdvisory() {
 
                 <span
                   className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${getPriorityClass(
-                    advisory.level
+                    advisory?.level || "Loading"
                   )}`}
                 >
-                  {advisory.level}
+                  {advisory?.level || "Loading"}
                 </span>
               </div>
 
               <p className="mt-3 text-[11px] leading-5 text-slate-600">
-                {advisory.summary}
+                {advisory?.summary || "Loading crop-specific guidance..."}
               </p>
             </div>
           </div>
@@ -286,22 +349,22 @@ export default function ForecastAdvisory() {
           <div className="mt-4 space-y-3">
             <RiskIndicator
               label="Rainfall Risk"
-              value={advisory.rainfallRisk}
+              value={advisory?.rainfallRisk || "--"}
             />
 
             <RiskIndicator
               label="Heat Risk"
-              value={advisory.heatRisk}
+              value={advisory?.heatRisk || "--"}
             />
 
             <RiskIndicator
               label="Wind Risk"
-              value={advisory.windRisk}
+              value={advisory?.windRisk || "--"}
             />
 
             <RiskIndicator
               label="Moisture Risk"
-              value={advisory.moistureRisk}
+              value={advisory?.moistureRisk || "--"}
             />
           </div>
         </section>
@@ -329,25 +392,25 @@ export default function ForecastAdvisory() {
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <DecisionCard
             title="Irrigation"
-            value={advisory.irrigation}
+            value={advisory?.irrigation || "Loading advisory..."}
           />
 
           <DecisionCard
             title="Field Operations"
-            value={advisory.fieldOperations}
+            value={advisory?.fieldOperations || "Loading advisory..."}
           />
 
           <DecisionCard
             title="Crop Monitoring"
-            value={advisory.monitoring}
+            value={advisory?.monitoring || "Loading advisory..."}
           />
         </div>
       </section>
 
       <p className="mt-4 text-center text-[10px] text-slate-400">
-        Prototype advisory rules use demonstration weather data.
-        Scientific crop-weather rules will be implemented and
-        validated in the backend.
+        Rainfall values are served from the real Panchayat-level
+        downscaling output. Advisory actions use the current
+        prototype crop-weather rules.
       </p>
     </main>
   );
@@ -358,17 +421,20 @@ function SelectField({
   value,
   options,
   onChange,
+  disabled = false,
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[10px] font-medium text-slate-500">
+      <label htmlFor={label.toLowerCase().replaceAll(" ", "-")} className="mb-1.5 block text-[10px] font-medium text-slate-500">
         {label}
       </label>
 
       <select
+        id={label.toLowerCase().replaceAll(" ", "-")}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400"
+        disabled={disabled}
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -440,7 +506,7 @@ function ForecastDay({ data, today }) {
 
       <div className="mt-3 border-t border-slate-200 pt-3">
         <p className="text-xs font-semibold text-slate-700">
-          {data.max}° / {data.min}°
+          {data.maxTemp}° / {data.minTemp}°
         </p>
 
         <p className="mt-1 text-[9px] text-slate-400">
@@ -515,142 +581,3 @@ function ShieldAlertIcon() {
   );
 }
 
-// function createAdvisory({
-//   crop,
-//   stage,
-//   rainfall,
-//   rainProbability,
-//   temperature,
-//   humidity,
-//   wind,
-// }) {
-//   const heavyRain =
-//     rainfall >= 25 || rainProbability >= 80;
-
-//   const moderateRain =
-//     rainfall >= 15 || rainProbability >= 60;
-
-//   const heat =
-//     temperature >= 35;
-
-//   const strongWind =
-//     wind >= 15;
-
-//   const highHumidity =
-//     humidity >= 80;
-
-//   const actions = [];
-
-//   if (heavyRain) {
-//     actions.push({
-//       title: "Avoid irrigation",
-//       description:
-//         "Expected rainfall may provide sufficient moisture and increase the risk of excess water.",
-//     });
-//   } else if (moderateRain) {
-//     actions.push({
-//       title: "Review irrigation timing",
-//       description:
-//         "Check field moisture before the next irrigation cycle instead of following a fixed schedule.",
-//     });
-//   } else {
-//     actions.push({
-//       title: "Monitor soil moisture",
-//       description:
-//         "Lower rainfall conditions may require irrigation depending on field moisture and crop demand.",
-//     });
-//   }
-
-//   if (heavyRain) {
-//     actions.push({
-//       title: "Protect field drainage",
-//       description:
-//         "Inspect drainage channels and low-lying portions of the field before the rainfall event.",
-//     });
-//   } else {
-//     actions.push({
-//       title: "Field operations can continue",
-//       description:
-//         "Weather conditions are comparatively suitable for routine field activity.",
-//     });
-//   }
-
-//   if (highHumidity) {
-//     actions.push({
-//       title: "Monitor for disease",
-//       description:
-//         "Persistent humid conditions can increase the suitability for some fungal and moisture-related crop problems.",
-//     });
-//   } else {
-//     actions.push({
-//       title: "Continue crop monitoring",
-//       description:
-//         "Regular scouting should continue through the current crop stage.",
-//     });
-//   }
-
-//   if (heat) {
-//     actions.push({
-//       title: "Monitor heat stress",
-//       description:
-//         "Higher daytime temperatures may increase crop water demand, especially in sensitive stages.",
-//     });
-//   } else if (strongWind) {
-//     actions.push({
-//       title: "Check wind-sensitive operations",
-//       description:
-//         "Avoid weather-sensitive field operations when stronger winds are expected.",
-//     });
-//   } else {
-//     actions.push({
-//       title: "Normal crop monitoring",
-//       description:
-//         "No major temperature or wind-related concern is indicated by today's demonstration forecast.",
-//     });
-//   }
-
-//   let level = "Low";
-
-//   if (heavyRain || (heat && highHumidity)) {
-//     level = "High";
-//   } else if (moderateRain || heat || strongWind) {
-//     level = "Medium";
-//   }
-
-//   const summary =
-//     level === "High"
-//       ? `Weather conditions require closer attention for ${crop} during the ${stage.toLowerCase()} stage.`
-//       : level === "Medium"
-//         ? `Some weather-related adjustments may be useful for ${crop} during the ${stage.toLowerCase()} stage.`
-//         : `Current weather conditions show no major immediate advisory concern for ${crop}.`;
-
-//   return {
-//     level,
-//     summary,
-//     actions,
-//     rainfallRisk: heavyRain
-//       ? "High"
-//       : moderateRain
-//         ? "Moderate"
-//         : "Low",
-//     heatRisk: heat ? "Moderate" : "Low",
-//     windRisk: strongWind ? "Moderate" : "Low",
-//     moistureRisk: highHumidity ? "Moderate" : "Low",
-
-//     irrigation: heavyRain
-//       ? "Delay irrigation and reassess field moisture after rainfall."
-//       : moderateRain
-//         ? "Check soil moisture before irrigation."
-//         : "Irrigate according to soil moisture and crop requirement.",
-
-//     fieldOperations: heavyRain
-//       ? "Avoid unnecessary field operations during rainfall."
-//       : strongWind
-//         ? "Avoid wind-sensitive operations during stronger winds."
-//         : "Routine field operations can continue with normal precautions.",
-
-//     monitoring: highHumidity
-//       ? "Increase monitoring for moisture-related pest and disease conditions."
-//       : "Continue regular crop and field monitoring.",
-//   };
-// }

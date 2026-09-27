@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -13,8 +13,7 @@ import {
   Wind,
 } from "lucide-react";
 
-import { weatherByPanchayat } from "../data/mockData";
-import { createAlerts } from "../services/alertService";
+import { getAlertsFromApi } from "../services/api";
 
 const priorityOptions = ["All", "High", "Medium", "Low"];
 
@@ -24,11 +23,42 @@ export default function Alerts() {
 
   const [priority, setPriority] = useState("All");
 
+  const [alerts, setAlerts] = useState([]);
+
   const [readAlerts, setReadAlerts] = useState([]);
 
-  const alerts = useMemo(() => {
-    return createAlerts();
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadAlerts() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getAlertsFromApi();
+
+        setAlerts(data);
+
+        console.log("Alerts from backend:", data);
+      } catch (error) {
+        console.error("Alerts API failed:", error);
+        setError("Unable to load weather alerts.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAlerts();
   }, []);
+
+  const panchayatOptions = [
+    "All",
+    ...new Set(
+      alerts.map((alert) => alert.panchayat)
+    ),
+  ];
 
   const filteredAlerts = alerts.filter((alert) => {
     const matchesPanchayat =
@@ -75,13 +105,10 @@ export default function Alerts() {
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Weather Alerts
+              Rainfall Alerts
             </h1>
 
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-              Important weather conditions that may require
-              attention for the selected Panchayat.
-            </p>
+            
           </div>
 
           <div className="flex items-center gap-2">
@@ -103,10 +130,7 @@ export default function Alerts() {
             <FilterField
               label="Panchayat"
               value={selectedPanchayat}
-              options={[
-                "All",
-                ...Object.keys(weatherByPanchayat),
-              ]}
+              options={panchayatOptions}
               onChange={setSelectedPanchayat}
             />
 
@@ -135,7 +159,7 @@ export default function Alerts() {
           icon={Bell}
           title="Total Alerts"
           value={alerts.length}
-          description="Current generated alerts"
+          description="Date-stamped model output"
           iconBg="bg-slate-50"
           iconColor="text-slate-600"
         />
@@ -199,7 +223,17 @@ export default function Alerts() {
           </div>
         </div>
 
-        {filteredAlerts.length === 0 ? (
+        {loading ? (
+          <div className="flex min-h-[260px] items-center justify-center text-xs text-slate-400">
+            Loading alerts...
+          </div>
+        ) : error ? (
+          <div className="flex min-h-[260px] items-center justify-center px-5 text-center">
+            <p className="text-xs text-red-500">
+              {error}
+            </p>
+          </div>
+        ) : filteredAlerts.length === 0 ? (
           <EmptyAlerts />
         ) : (
           <div className="divide-y divide-slate-100">
@@ -227,39 +261,24 @@ export default function Alerts() {
 
             <div>
               <h2 className="text-sm font-bold text-slate-800">
-                Alert Generation
+                Backend Alert Rule
               </h2>
 
               <p className="mt-1 text-[10px] text-slate-400">
-                Current prototype conditions
+                Based on rainfall prediction output
               </p>
             </div>
           </div>
 
           <div className="mt-5 space-y-3">
             <LogicRow
-              condition="Rainfall ≥ 25 mm"
+              condition="Predicted rainfall ≥ 25 mm"
               result="Heavy rainfall alert"
             />
 
             <LogicRow
-              condition="Rain probability ≥ 80%"
-              result="High rain probability"
-            />
-
-            <LogicRow
-              condition="Maximum temperature ≥ 35°C"
-              result="Heat monitoring alert"
-            />
-
-            <LogicRow
-              condition="Humidity ≥ 80%"
-              result="Moisture / disease monitoring"
-            />
-
-            <LogicRow
-              condition="Wind ≥ 15 km/h"
-              result="Strong wind monitoring"
+              condition="Predicted rainfall ≥ 30 mm"
+              result="High priority"
             />
           </div>
         </section>
@@ -269,156 +288,54 @@ export default function Alerts() {
             <CloudRain className="h-5 w-5 text-sky-500" />
 
             <h2 className="text-sm font-bold text-slate-800">
-              What Happens in the Final System?
+              Data Availability
             </h2>
           </div>
 
           <div className="mt-4 space-y-3">
             <FlowRow
               number="01"
-              text="Weather forecast is received for the selected location."
+              text="Alerts use the latest date available in the Panchayat rainfall dataset."
             />
 
             <FlowRow
               number="02"
-              text="Downscaled weather values are evaluated against risk thresholds."
+              text="The prediction date is included with each alert."
             />
 
             <FlowRow
               number="03"
-              text="Relevant alerts are created with Panchayat and weather context."
+              text="The source dataset currently provides rainfall predictions only."
             />
 
             <FlowRow
               number="04"
-              text="The advisory engine can connect the alert to an agricultural action."
+              text="Temperature, humidity and wind alerts are omitted until backend data is available."
             />
           </div>
         </section>
       </section>
 
       <p className="mt-4 text-center text-[10px] text-slate-400">
-        Alert values and thresholds shown here are prototype
-        rules. Final thresholds will be validated using the
-        backend weather and agricultural data pipeline.
+        Alerts are based on model rainfall predictions, not live observations. Check local conditions before acting.
       </p>
     </main>
   );
 }
 
-// function createAlerts() {
-//   const alerts = [];
-
-//   Object.entries(weatherByPanchayat).forEach(
-//     ([panchayat, weather]) => {
-//       if (weather.rainfall >= 25) {
-//         alerts.push({
-//           id: `${panchayat}-rain`,
-//           panchayat,
-//           priority: weather.rainfall >= 30 ? "High" : "Medium",
-//           category: "Heavy Rainfall",
-//           title: `Heavy rainfall expected in ${panchayat}`,
-//           description:
-//             `${weather.rainfall} mm rainfall is currently estimated. ` +
-//             "Low-lying fields and drainage channels should be monitored.",
-//           action:
-//             "Review irrigation plans and check field drainage.",
-//           icon: CloudRain,
-//           time: "Today",
-//         });
-//       }
-
-//       if (weather.humidity >= 80) {
-//         alerts.push({
-//           id: `${panchayat}-humidity`,
-//           panchayat,
-//           priority: "Medium",
-//           category: "High Humidity",
-//           title: `High humidity in ${panchayat}`,
-//           description:
-//             `Current humidity is estimated at ${weather.humidity}%. ` +
-//             "Moist conditions can increase the suitability of some crop diseases.",
-//           action:
-//             "Increase crop scouting and monitor for disease symptoms.",
-//           icon: Droplets,
-//           time: "Today",
-//         });
-//       }
-
-//       if (weather.maxTemp >= 35) {
-//         alerts.push({
-//           id: `${panchayat}-heat`,
-//           panchayat,
-//           priority: "Medium",
-//           category: "Heat",
-//           title: `High daytime temperature in ${panchayat}`,
-//           description:
-//             `Maximum temperature may reach ${weather.maxTemp}°C.`,
-//           action:
-//             "Monitor crop moisture and heat-sensitive conditions.",
-//           icon: Thermometer,
-//           time: "Next 24h",
-//         });
-//       }
-
-//       if (weather.windSpeed >= 15) {
-//         alerts.push({
-//           id: `${panchayat}-wind`,
-//           panchayat,
-//           priority: "Medium",
-//           category: "Wind",
-//           title: `Strong wind conditions near ${panchayat}`,
-//           description:
-//             `Wind speed is estimated at ${weather.windSpeed} km/h from the ${weather.windDirection}.`,
-//           action:
-//             "Review wind-sensitive farm operations.",
-//           icon: Wind,
-//           time: "Next 24h",
-//         });
-//       }
-
-//       if (
-//         weather.rainfall < 20 &&
-//         weather.maxTemp < 35 &&
-//         weather.humidity < 80
-//       ) {
-//         alerts.push({
-//           id: `${panchayat}-normal`,
-//           panchayat,
-//           priority: "Low",
-//           category: "Normal Conditions",
-//           title: `No major weather risk in ${panchayat}`,
-//           description:
-//             "No major threshold-based weather alert has been triggered by the current prototype rules.",
-//           action:
-//             "Continue regular weather and crop monitoring.",
-//           icon: CheckCircle2,
-//           time: "Current",
-//         });
-//       }
-//     }
-//   );
-
-//   return alerts.sort((a, b) => {
-//     const priorityOrder = {
-//       High: 0,
-//       Medium: 1,
-//       Low: 2,
-//     };
-
-//     return (
-//       priorityOrder[a.priority] -
-//       priorityOrder[b.priority]
-//     );
-//   });
-// }
+const alertIcons = {
+  "Heavy Rainfall": CloudRain,
+  "High Humidity": Droplets,
+  Heat: Thermometer,
+  Wind,
+};
 
 function AlertItem({
   alert,
   isRead,
   onMarkRead,
 }) {
-  const Icon = alert.icon;
+  const Icon = alertIcons[alert.category] || AlertTriangle;
 
   return (
     <div

@@ -7,7 +7,6 @@ import Header from "./components/Header";
 import Dashboard from "./pages/Dashboard";
 import PanchayatDetails from "./pages/PanchayatDetails";
 import MapView from "./pages/MapView";
-import PlaceholderPage from "./pages/PlaceholderPage";
 import ForecastAdvisory from "./pages/ForecastAdvisory";
 import HistoricalData from "./pages/HistoricalData";
 import Alerts from "./pages/Alerts";

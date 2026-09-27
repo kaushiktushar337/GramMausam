@@ -1,20 +1,17 @@
-import { weatherByPanchayat } from "../data/mockData";
-import { forecastByPanchayat } from "../data/forecastData";
+import {
+  getWeatherFromApi,
+  getForecastFromApi,
+  getPanchayats as getPanchayatNamesFromApi,
+} from "./api";
 
-export function getWeather(panchayat) {
-  return (
-    weatherByPanchayat[panchayat] ||
-    weatherByPanchayat.Bara
-  );
+export async function getWeather(panchayat) {
+  return getWeatherFromApi(panchayat);
 }
 
-export function getForecast(panchayat) {
-  return (
-    forecastByPanchayat[panchayat] ||
-    forecastByPanchayat.Bara
-  );
+export async function getForecast(panchayat) {
+  return getForecastFromApi(panchayat);
 }
 
-export function getPanchayats() {
-  return Object.keys(weatherByPanchayat);
+export async function getPanchayats() {
+  return getPanchayatNamesFromApi();
 }

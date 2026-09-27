@@ -1,12 +1,31 @@
+import { useEffect, useState } from "react";
 import {
   Bell,
   CalendarDays,
-  ChevronDown,
   Menu,
   Search,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import PanchayatSelector from "./PanchayatSelector";
 
 export default function Header({ onMenuClick }) {
+  const navigate = useNavigate();
+  const [today, setToday] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setToday(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dateLabel = new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(today);
+  const weekdayLabel = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+  }).format(today);
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="flex min-h-[72px] items-center gap-3 px-4 sm:px-6 xl:px-8">
@@ -25,22 +44,28 @@ export default function Header({ onMenuClick }) {
           </div>
 
           <span className="text-sm font-bold text-slate-900">
-            GramMausam AI
+            GramMausam
           </span>
         </div>
 
-        <div className="relative hidden flex-1 md:block">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-          <input
-            type="text"
-            placeholder="Search State, District, Block or Panchayat..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-emerald-400 focus:bg-white"
+        <div className="relative hidden min-w-0 max-w-2xl flex-1 md:block">
+          <Search className="pointer-events-none absolute left-4 top-1/2 z-[60] h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <PanchayatSelector
+            label={null}
+            value=""
+            placeholder="Search Panchayats..."
+            inputClassName="bg-slate-50 py-3 pl-11 pr-4 focus:bg-white"
+            onChange={(panchayat) =>
+              navigate(`/panchayat-details?panchayat=${encodeURIComponent(panchayat)}`)
+            }
           />
         </div>
 
         <button
           type="button"
+          onClick={() => navigate("/alerts")}
+          aria-label="Open alerts"
+          title="Open alerts"
           className="relative ml-auto rounded-xl p-2.5 text-slate-600 hover:bg-slate-50"
         >
           <Bell className="h-5 w-5" />
@@ -53,31 +78,13 @@ export default function Header({ onMenuClick }) {
 
           <div>
             <p className="text-xs font-semibold text-slate-700">
-              24 Apr 2025
+              {dateLabel}
             </p>
 
             <p className="text-[10px] text-slate-400">
-              Thu
+              {weekdayLabel}
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
-            VS
-          </div>
-
-          <div className="hidden xl:block">
-            <p className="text-xs font-semibold text-slate-800">
-              Vibhor Sahu
-            </p>
-
-            <p className="text-[10px] text-slate-500">
-              Farmer / User
-            </p>
-          </div>
-
-          <ChevronDown className="hidden h-4 w-4 text-slate-400 xl:block" />
         </div>
       </div>
     </header>

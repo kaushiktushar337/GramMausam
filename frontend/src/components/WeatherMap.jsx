@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Layers3,
   Minus,
@@ -14,7 +14,7 @@ import {
   useMap,
 } from "react-leaflet";
 
-import { getWeather } from "../services/weatherService";
+import { getWeatherFromApi } from "../services/api";
 
 const center = [25.44, 81.84];
 
@@ -71,6 +71,58 @@ export default function WeatherMap({
   const [activeLayer, setActiveLayer] =
     useState("Rainfall");
 
+  const [backendWeather, setBackendWeather] =
+    useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWeather() {
+      try {
+        const names = [...new Set([
+          ...panchayatData.map((item) => item.name),
+          selectedPanchayat,
+        ].filter(Boolean))];
+        const results = await Promise.allSettled(
+          names.map(async (name) => ({
+            name,
+            weather: await getWeatherFromApi(name),
+          }))
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const weatherMap = {};
+
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            weatherMap[result.value.name] = result.value.weather;
+          }
+        });
+
+        setBackendWeather(weatherMap);
+
+        console.log(
+          "WeatherMap backend data:",
+          weatherMap
+        );
+      } catch (error) {
+        console.error(
+          "WeatherMap API failed:",
+          error
+        );
+      }
+    }
+
+    loadWeather();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPanchayat]);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
@@ -80,7 +132,7 @@ export default function WeatherMap({
           </h2>
 
           <p className="mt-0.5 text-[10px] text-slate-400">
-            Fine-resolution weather visualization
+            Live Panchayat estimates with illustrative boundaries
           </p>
         </div>
 
@@ -90,11 +142,10 @@ export default function WeatherMap({
               key={layer}
               type="button"
               onClick={() => setActiveLayer(layer)}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[10px] font-medium transition ${
-                activeLayer === layer
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[10px] font-medium transition ${activeLayer === layer
                   ? "bg-emerald-700 text-white"
                   : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              }`}
+                }`}
             >
               {layer}
             </button>
@@ -116,7 +167,11 @@ export default function WeatherMap({
           />
 
           {panchayatData.map((item) => {
-            const weather = getWeather(item.name);
+           
+            const weather = backendWeather[item.name];
+            if (!weather) {
+              return null;
+            }
 
             const isSelected =
               item.name === selectedPanchayat;
@@ -141,7 +196,9 @@ export default function WeatherMap({
                     : "#ffffff",
                   weight: isSelected ? 3 : 1,
                   fillColor,
-                  fillOpacity: isSelected ? 0.72 : 0.48,
+                  fillOpacity: isSelected
+                    ? 0.72
+                    : 0.48,
                 }}
               >
                 <Tooltip direction="center">
@@ -296,22 +353,20 @@ function MapLegend({ activeLayer }) {
           </p>
 
           <div className="mt-2 flex items-center gap-1">
-            {getLegendColors(activeLayer).map((color) => (
-              <span
-                key={color}
-                className="h-2.5 w-8 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-            ))}
+            {getLegendColors(activeLayer).map(
+              (color) => (
+                <span
+                  key={color}
+                  className="h-2.5 w-8 rounded-full"
+                  style={{
+                    backgroundColor: color,
+                  }}
+                />
+              )
+            )}
           </div>
 
-          <div
-            className={`mt-1 flex ${
-              activeLayer === "Risk"
-                ? "justify-between"
-                : "justify-between"
-            } text-[8px] text-slate-400`}
-          >
+          <div className="mt-1 flex justify-between text-[8px] text-slate-400">
             {values.map((value) => (
               <span key={value}>{value}</span>
             ))}

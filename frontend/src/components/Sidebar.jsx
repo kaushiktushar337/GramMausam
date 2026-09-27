@@ -63,12 +63,12 @@ export default function Sidebar({ mobile = false, onClose }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
-              <Sprout className="h-7 w-7 text-emerald-600" />
+              <img src="./public/GramMausam Logo.png" alt="Logo" />
             </div>
 
             <div>
               <h1 className="text-[19px] font-bold tracking-tight text-slate-900">
-                GramMausam AI
+                GramMausam
               </h1>
 
               <p className="text-[10px] text-slate-500">
@@ -121,30 +121,7 @@ export default function Sidebar({ mobile = false, onClose }) {
         })}
       </nav>
 
-      <div className="m-3 rounded-2xl bg-gradient-to-b from-emerald-50 to-green-50 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <Sprout className="h-5 w-5 text-emerald-600" />
-
-          <span className="text-xs font-semibold text-emerald-800">
-            Better Weather Insights
-          </span>
-        </div>
-
-        <p className="text-[11px] leading-5 text-slate-600">
-          Local weather intelligence for smarter agricultural
-          decisions.
-        </p>
-
-        <div className="mt-5 border-t border-emerald-100 pt-3 text-center">
-          <p className="text-[10px] font-semibold text-slate-500">
-            Ministry of Earth Sciences
-          </p>
-
-          <p className="mt-1 text-[9px] text-slate-400">
-            Government of India
-          </p>
-        </div>
-      </div>
+      
     </aside>
   );
 }

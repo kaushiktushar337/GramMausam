@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
@@ -21,35 +21,59 @@ import {
   YAxis,
 } from "recharts";
 
+import { getHistoricalFromApi } from "../services/api";
+import PanchayatSelector from "../components/PanchayatSelector";
 import {
   getEvaluationMetrics,
-  getHistoricalData,
   getRainEventMetrics,
 } from "../services/historicalService";
 
-const parameters = [
-  "Rainfall",
-  "Temperature",
-  "Humidity",
-];
-
-const panchayats = [
-  "Bara",
-  "Kareli",
-  "Soraon",
-  "Phaphamau",
-  "Jasra",
-];
+const parameters = ["Rainfall"];
 
 export default function HistoricalData() {
-  const [panchayat, setPanchayat] = useState("Bara");
+  const [panchayat, setPanchayat] = useState("ABHAUDOPURA");
   const [parameter, setParameter] =
     useState("Rainfall");
   const [period, setPeriod] = useState("7 Days");
 
-  const chartData = useMemo(() => {
-    return getHistoricalData(parameter, period);
-  }, [parameter, period]);
+  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadHistoricalData() {
+      try {
+        setLoading(true);
+
+        if (!panchayat) {
+          setChartData([]);
+          return;
+        }
+
+        const data = await getHistoricalFromApi(
+          panchayat,
+          Number.parseInt(period, 10)
+        );
+
+        setChartData(data);
+
+        console.log(
+          "Historical data from backend:",
+          data
+        );
+      } catch (error) {
+        console.error(
+          "Historical API failed:",
+          error
+        );
+
+        setChartData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadHistoricalData();
+  }, [panchayat, period]);
 
   const metrics = getEvaluationMetrics(parameter);
   const rainMetrics = getRainEventMetrics();
@@ -81,10 +105,9 @@ export default function HistoricalData() {
       {/* Filters */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-3">
-          <Filter
-            label="Panchayat"
+          <PanchayatSelector
+            key={panchayat}
             value={panchayat}
-            options={panchayats}
             onChange={setPanchayat}
           />
 
@@ -110,18 +133,6 @@ export default function HistoricalData() {
           icon={MapPin}
           label="Panchayat"
           value={panchayat}
-        />
-
-        <LocationItem
-          icon={MapPin}
-          label="Block"
-          value="Phaphamau"
-        />
-
-        <LocationItem
-          icon={MapPin}
-          label="District"
-          value="Prayagraj"
         />
 
         <LocationItem
@@ -162,11 +173,10 @@ export default function HistoricalData() {
                 key={item}
                 type="button"
                 onClick={() => setParameter(item)}
-                className={`rounded-lg px-3 py-1.5 text-[10px] font-medium transition ${
-                  parameter === item
-                    ? "bg-white text-emerald-700 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`rounded-lg px-3 py-1.5 text-[10px] font-medium transition ${parameter === item
+                  ? "bg-white text-emerald-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 {item}
               </button>
@@ -175,80 +185,90 @@ export default function HistoricalData() {
         </div>
 
         <div className="mt-6 h-[330px] w-full">
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-            <ComposedChart data={chartData}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#e2e8f0"
-              />
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-xs text-slate-400">
+              Loading historical data...
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-xs text-red-500">
+              Historical data unavailable.
+            </div>
+          ) : (
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+              <ComposedChart data={chartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#e2e8f0"
+                />
 
-              <XAxis
-                dataKey="date"
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fontSize: 10,
-                  fill: "#64748b",
-                }}
-              />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fontSize: 10,
+                    fill: "#64748b",
+                  }}
+                />
 
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fontSize: 10,
-                  fill: "#64748b",
-                }}
-              />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fontSize: 10,
+                    fill: "#64748b",
+                  }}
+                />
 
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  fontSize: "11px",
-                }}
-              />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "11px",
+                  }}
+                />
 
-              <Legend
-                wrapperStyle={{
-                  fontSize: "10px",
-                  paddingTop: "8px",
-                }}
-              />
+                <Legend
+                  wrapperStyle={{
+                    fontSize: "10px",
+                    paddingTop: "8px",
+                  }}
+                />
 
-              <Line
-                type="monotone"
-                dataKey="observation"
-                name="Actual Observation"
-                stroke="#0f172a"
-                strokeWidth={2.5}
-                dot={{ r: 3 }}
-              />
+                <Line
+                  type="monotone"
+                  dataKey="observation"
+                  name="Actual Observation"
+                  stroke="#0f172a"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
 
-              <Line
-                type="monotone"
-                dataKey="blockForecast"
-                name="Block Forecast"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-              />
+                <Line
+                  type="monotone"
+                  dataKey="blockForecast"
+                  name="Block Forecast"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
 
-              <Line
-                type="monotone"
-                dataKey="downscaled"
-                name="Downscaled Estimate"
-                stroke="#059669"
-                strokeWidth={2.5}
-                dot={{ r: 3 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+                <Line
+                  type="monotone"
+                  dataKey="downscaled"
+                  name="Downscaled Estimate"
+                  stroke="#059669"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -521,11 +541,7 @@ export default function HistoricalData() {
         </button>
       </section>
 
-      <p className="mt-4 text-center text-[10px] text-slate-400">
-        All numerical evaluation values shown on this prototype
-        page are illustrative and must be replaced by real
-        validation results in Chunk 2.
-      </p>
+      
     </main>
   );
 }
