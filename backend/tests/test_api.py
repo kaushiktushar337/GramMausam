@@ -33,6 +33,16 @@ def test_forecast():
     ]
 
 
+def test_historical_periods_share_consistent_daily_values():
+    three_day = client.get("/api/historical/Bara?days=3").json()
+    seven_day = client.get("/api/historical/Bara?days=7").json()
+
+    assert len(three_day) == 3
+    assert len(seven_day) == 7
+    assert three_day == seven_day[-3:]
+    assert len({item["observation"] for item in seven_day}) > 1
+
+
 def test_panchayat_boundary():
     response = client.get("/api/panchayats/ABHAUDOPURA/boundary")
     assert response.status_code == 200

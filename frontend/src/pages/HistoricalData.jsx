@@ -22,6 +22,7 @@ import {
 } from "recharts";
 
 import { getHistoricalFromApi } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 import PanchayatSelector from "../components/PanchayatSelector";
 import {
   getEvaluationMetrics,
@@ -252,6 +253,7 @@ export default function HistoricalData() {
                 <YAxis
                   axisLine={false}
                   tickLine={false}
+                  tickFormatter={formatRainfall}
                   tick={{
                     fontSize: 10,
                     fill: "#64748b",
@@ -259,6 +261,7 @@ export default function HistoricalData() {
                 />
 
                 <Tooltip
+                  formatter={(value) => [`${formatRainfall(value)} mm`]}
                   contentStyle={{
                     borderRadius: "12px",
                     border: "1px solid #e2e8f0",

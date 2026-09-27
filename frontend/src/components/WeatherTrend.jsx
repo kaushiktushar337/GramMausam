@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import { getForecastFromApi } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 
 const parameters = [
   "Rainfall",
@@ -161,6 +162,9 @@ function RainfallChart({ data }) {
         />
 
         <Tooltip
+          formatter={(value, name) => name === "Rainfall (mm)"
+            ? [`${formatRainfall(value)} mm`, name]
+            : [value, name]}
           contentStyle={{
             borderRadius: "12px",
             border: "1px solid #e2e8f0",

@@ -13,6 +13,7 @@ import {
 
 import { crops } from "../services/advisoryService";
 import { getAdvisoryFromApi } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 import PanchayatSelector from "../components/PanchayatSelector";
 
 import {
@@ -208,7 +209,7 @@ export default function ForecastAdvisory() {
         <SummaryCard
           icon={CloudRain}
           title="Rainfall"
-          value={`${today.rainfall} mm`}
+          value={`${formatRainfall(today.rainfall)} mm`}
           note={`${today.rainProbability}% probability`}
         />
 
@@ -235,7 +236,7 @@ export default function ForecastAdvisory() {
               <CalendarDays className="h-5 w-5 text-emerald-600" />
 
               <h2 className="text-sm font-bold text-slate-800">
-                5-Day Panchayat Forecast
+                7-Day Panchayat Forecast
               </h2>
             </div>
 
@@ -497,7 +498,7 @@ function ForecastDay({ data, today }) {
       <CloudRain className="mx-auto my-3 h-7 w-7 text-sky-500" />
 
       <p className="text-sm font-bold text-slate-800">
-        {data.rainfall} mm
+        {formatRainfall(data.rainfall)} mm
       </p>
 
       <p className="mt-1 text-[9px] text-slate-400">

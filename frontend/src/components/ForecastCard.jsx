@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { getForecastFromApi } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 
 const icons = {
   rain: CloudRain,
@@ -99,7 +100,7 @@ export default function ForecastCard({ panchayat }) {
                 <Icon className="mx-auto my-3 h-7 w-7 text-sky-500" />
 
                 <p className="text-xs font-bold text-slate-800">
-                  {item.rainfall} mm
+                  {formatRainfall(item.rainfall)} mm
                 </p>
 
                 <p className="mt-1 text-[9px] text-slate-400">

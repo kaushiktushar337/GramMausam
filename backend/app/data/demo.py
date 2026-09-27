@@ -154,13 +154,19 @@ def make_historical(panchayat: str, days: int = 30) -> list[dict]:
     profile = get_profile(panchayat)
     end = date(2025, 4, 24)
     result = []
+    rainfall_factors = [
+        0.0, 0.08, 0.34, 0.12, 0.0, 0.65, 1.25, 0.18, 0.0, 0.42, 0.92,
+        0.06, 0.15, 1.65, 0.04, 0.3, 0.0, 0.78, 0.22, 0.1, 1.1,
+    ]
 
     for i in range(days):
         current = end - timedelta(days=days - 1 - i)
-        phase = (i % 7) - 3
-        observed = max(0.0, profile["rainfall"] + phase * 2 + ((i * 3) % 5 - 2))
-        block = max(0.0, profile["rainfall"] + phase * 2.4 + ((i * 2) % 7 - 3))
-        downscaled = max(0.0, profile["rainfall"] + phase * 1.7 + ((i * 5) % 5 - 2))
+        day_index = current.toordinal() % len(rainfall_factors)
+        rainfall = profile["rainfall"]
+        observed = rainfall * rainfall_factors[day_index]
+        block_factor = rainfall_factors[(day_index + 1) % len(rainfall_factors)]
+        block = rainfall * block_factor * (0.85 + (day_index % 3) * 0.15)
+        downscaled = observed * (0.82 + (day_index % 4) * 0.06) + rainfall * 0.04
         result.append(
             {
                 "date": current,

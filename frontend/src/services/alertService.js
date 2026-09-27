@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { weatherByPanchayat } from "../data/mockData";
+import { formatRainfall } from "./rainfall";
 
 export function createAlerts() {
   const alerts = [];
@@ -24,7 +25,7 @@ export function createAlerts() {
           category: "Heavy Rainfall",
           title: `Heavy rainfall expected in ${panchayat}`,
           description:
-            `${weather.rainfall} mm rainfall is currently estimated. ` +
+            `${formatRainfall(weather.rainfall)} mm rainfall is currently estimated. ` +
             "Low-lying fields and drainage channels should be monitored.",
           action:
             "Review irrigation plans and check field drainage.",

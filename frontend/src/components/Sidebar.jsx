@@ -42,7 +42,6 @@ const menuItems = [
     name: "Alerts",
     path: "/alerts",
     icon: Bell,
-    badge: 3,
   },
   {
     name: "Settings",

@@ -1,4 +1,5 @@
 import { BarChart3 } from "lucide-react";
+import { formatRainfall } from "../services/rainfall";
 
 export default function PanchayatComparison({
   data,
@@ -50,7 +51,7 @@ export default function PanchayatComparison({
                 </td>
 
                 <td className="px-3 py-3 text-xs text-slate-600">
-                  {row.rainfall}
+                  {formatRainfall(row.rainfall)}
                 </td>
 
                 <td className="px-3 py-3 text-xs text-slate-600">

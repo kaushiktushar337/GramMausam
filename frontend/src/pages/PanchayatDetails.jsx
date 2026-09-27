@@ -27,6 +27,7 @@ import {
 } from "../services/api";
 
 import PanchayatSelector from "../components/PanchayatSelector";
+import { formatRainfall } from "../services/rainfall";
 
 const parameters = [
   "Rainfall",
@@ -775,6 +776,3 @@ function InfoBox({ title, value }) {
   );
 }
 
-function formatRainfall(value) {
-  return Number(value).toFixed(1);
-}

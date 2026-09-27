@@ -16,6 +16,7 @@ import {
 import {
   getNearbyPanchayatsFromApi,
 } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 
 const center = [25.44, 81.84];
 
@@ -373,7 +374,7 @@ function getWeatherTooltip(name, weather) {
   return [
     `<strong>${safeName}</strong>`,
     `Rainfall data date: ${weather.date}`,
-    `Rainfall: ${Number(weather.rainfall).toFixed(1)} mm`,
+    `Rainfall: ${formatRainfall(weather.rainfall)} mm`,
     `Temperature estimate: min ${weather.minTemp}°C / max ${weather.maxTemp}°C`,
     `Humidity estimate: ${weather.humidity}%`,
     `Wind estimate: ${weather.windSpeed} km/h ${weather.windDirection}`,

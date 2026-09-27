@@ -13,6 +13,7 @@ import {
 import WeatherMap from "../components/WeatherMap";
 import PanchayatSelector from "../components/PanchayatSelector";
 import { getWeatherFromApi } from "../services/api";
+import { formatRainfall } from "../services/rainfall";
 
 export default function MapView() {
   const [selectedPanchayat, setSelectedPanchayat] = useState("ABHAUDOPURA");
@@ -103,7 +104,7 @@ export default function MapView() {
         <StatCard
           icon={CloudRain}
           title="Rainfall"
-          value={weather ? `${weather.rainfall} mm` : "--"}
+          value={weather ? `${formatRainfall(weather.rainfall)} mm` : "--"}
           note={weather?.rainfallRange || ""}
         />
 
