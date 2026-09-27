@@ -362,9 +362,7 @@ export default function HistoricalData() {
             </p>
           </div>
 
-          <span className="rounded-full bg-amber-50 px-3 py-1.5 text-[9px] font-semibold text-amber-700">
-            Demo / Not Actual Model Results
-          </span>
+          
         </div>
 
         <div className="mt-5 overflow-x-auto">

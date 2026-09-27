@@ -1,3 +1,4 @@
+import grammausamLogo from "../assets/grammausam-logo.png";
 import {
   Bell,
   House,
@@ -63,7 +64,11 @@ export default function Sidebar({ mobile = false, onClose }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
-              <img src="./public/GramMausam%20Logo.png" alt="Logo" />
+             <img
+  src={grammausamLogo}
+  alt="GramMausam"
+  className="h-10 w-10 rounded-lg object-contain"
+/>
             </div>
 
             <div>
