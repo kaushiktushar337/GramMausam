@@ -121,7 +121,7 @@ def _condition(rainfall: float) -> str:
 
 def make_forecast(panchayat: str, days: int = 7, start: date | None = None) -> list[dict]:
     profile = get_profile(panchayat)
-    start_date = start or date(2025, 4, 24)
+    start_date = start or date.today()
     rainfall_decay = [1.0, 0.67, 0.28, 0.50, 0.39, 0.33, 0.22]
     probability = [72, 58, 36, 42, 31, 25, 18]
 

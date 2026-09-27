@@ -128,6 +128,9 @@ export default function Dashboard() {
           <div className="space-y-4">
             <WeatherMap
               selectedPanchayat={selected.panchayat}
+              onPanchayatSelect={(panchayat) =>
+                setSelected((current) => ({ ...current, panchayat }))
+              }
             />
 
             <div className="grid gap-4 lg:grid-cols-2">

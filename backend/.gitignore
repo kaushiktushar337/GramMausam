@@ -45,3 +45,4 @@ data/*
 # Models
 models/*
 !models/.gitkeep
+!data/processed/panchayat_polygon_rainfall_july2025_test.csv

@@ -26,6 +26,13 @@ export async function getPanchayats(search = "", limit = 50, offset = 0) {
   return data.panchayats || [];
 }
 
+export function getNearbyPanchayatsFromApi(panchayat, limit = 8) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return request(
+    `/api/panchayats/${encodeURIComponent(panchayat)}/nearby?${params}`
+  );
+}
+
 export async function getWeatherFromApi(panchayat) {
   const data = await request(
     `/api/weather/${encodeURIComponent(panchayat)}`

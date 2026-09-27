@@ -78,6 +78,40 @@ export default function HistoricalData() {
   const metrics = getEvaluationMetrics(parameter);
   const rainMetrics = getRainEventMetrics();
 
+  const handleExport = () => {
+    if (chartData.length === 0) return;
+
+    const rows = [
+      ["date", "observation_mm", "block_forecast_mm", "downscaled_mm"],
+      ...chartData.map((item) => [
+        item.date,
+        item.observation,
+        item.blockForecast,
+        item.downscaled,
+      ]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\r\n");
+    const blob = new Blob(["\uFEFF", csv], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = `${panchayat.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-historical-${period.toLowerCase().replace(/\s+/g, "-")}.csv`;
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="mx-auto w-full max-w-[1700px] p-4 sm:p-6 xl:p-8">
       {/* Heading */}
@@ -525,14 +559,15 @@ export default function HistoricalData() {
           </h2>
 
           <p className="mt-1 text-[10px] text-slate-400">
-            Export functionality will use backend-generated
-            historical data once the data pipeline is connected.
+            Download the selected historical observations and estimates as a CSV file.
           </p>
         </div>
 
         <button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-800"
+          onClick={handleExport}
+          disabled={loading || chartData.length === 0}
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
           Export Data

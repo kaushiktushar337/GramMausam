@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -22,8 +24,34 @@ def test_weather():
 def test_forecast():
     response = client.get("/api/forecast/Bara?days=3")
     assert response.status_code == 200
-    assert len(response.json()) == 3
-    assert "max_temp" in response.json()[0]
+    forecast = response.json()
+    assert len(forecast) == 3
+    assert "max_temp" in forecast[0]
+    assert [item["date"] for item in forecast] == [
+        (date.today() + timedelta(days=offset)).isoformat()
+        for offset in range(3)
+    ]
+
+
+def test_panchayat_boundary():
+    response = client.get("/api/panchayats/ABHAUDOPURA/boundary")
+    assert response.status_code == 200
+    boundary = response.json()
+    assert boundary["type"] == "FeatureCollection"
+    assert boundary["features"][0]["properties"]["gpname"] == "ABHAUDOPURA"
+
+
+def test_nearby_panchayats_include_weather():
+    response = client.get("/api/panchayats/ABHAUDOPURA/nearby?limit=5")
+    assert response.status_code == 200
+    features = response.json()["features"]
+    assert len(features) == 5
+    assert features[0]["properties"]["gpname"] == "ABHAUDOPURA"
+    weather = features[0]["properties"]["weather"]
+    assert weather["rainfall"] >= 0
+    assert weather["windSpeed"] >= 0
+    assert weather["minTemp"] <= weather["maxTemp"]
+    assert weather["date"]
 
 
 def test_downscaling():
